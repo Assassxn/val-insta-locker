@@ -1,8 +1,8 @@
 <div align="center">
 
-<img src="src-tauri/icons/128x128.png" width="80" alt="logo" />
+<img src="src-tauri/icons/128x128.png" width="80" alt="ValLocker logo" />
 
-# val-insta-locker
+# ValLocker
 
 <p>
   <a href="https://github.com/daniilsys/val-insta-locker/releases/latest">
@@ -20,6 +20,8 @@
 
 <p>Valorant instalocker built with Rust + Tauri + React.<br/>Locks your agent the instant agent select starts.</p>
 
+<img src="docs/dashboard.png" width="720" alt="ValLocker dashboard" />
+
 </div>
 
 ---
@@ -36,15 +38,21 @@
 
 ## Features
 
-| | |
-|---|---|
-| **Lock / Select mode** | Lock the agent instantly, or just hover it — Valorant auto-locks when the timer runs out (no AFK penalty in select-only) |
-| **Configurable delay** | Slider from 0 to 2000ms so the lock doesn't look instant |
-| **Map macros** | Assign a different agent per map — the app detects the map and picks automatically |
-| **Break protection** | Re-arms if the match cancels mid agent-select |
-| **Match abandon** | Quit pregame with one click from inside the app |
-| **Activity log** | Real-time feed of every action the tool performs |
-| **Persistent config** | All settings saved locally as JSON |
+|                        |                                                                                          |
+| ---------------------- | ---------------------------------------------------------------------------------------- |
+| **Lock / Select mode** | Lock the agent instantly, or just hover it — Valorant auto-locks when the timer runs out |
+| **Configurable delay** | Slider from 0 to 2000ms so the lock doesn't look instant                                 |
+| **Map macros**         | Assign a different agent per map — the app detects the map and picks automatically       |
+| **Favorites**          | Right-click any agent to pin it — favorites are always shown first                       |
+| **Break protection**   | Re-arms if the match cancels mid agent-select                                            |
+| **Live pregame HUD**   | In-app overlay shows the map, the agent being locked, and the lock status in real time  |
+| **System tray**        | Hide the window and keep the instalocker armed in the background                         |
+| **Activity log**       | Real-time feed of every action the tool performs                                         |
+| **Persistent config**  | All settings saved locally as JSON                                                       |
+
+<div align="center">
+  <img src="docs/macros.png" width="720" alt="Map macros view" />
+</div>
 
 ---
 

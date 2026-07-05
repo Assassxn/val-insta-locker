@@ -1,16 +1,22 @@
-use tauri::{AppHandle, Emitter, State};
 use crate::config::{save_config, AppConfig, MapMacro};
 use crate::state::AppState;
-use crate::valorant::{agents, api, lockfile};
+use crate::valorant::{self, agents, api, lockfile};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 fn log(app: &AppHandle, msg: impl Into<String>) {
     let _ = app.emit("log-entry", msg.into());
 }
 
-async fn build_remote_auth(lock: &lockfile::LockfileData, app: &AppHandle) -> Option<api::RemoteAuth> {
+async fn build_remote_auth(
+    lock: &lockfile::LockfileData,
+    app: &AppHandle,
+) -> Option<api::RemoteAuth> {
     match api::get_remote_auth(lock).await {
         Ok(auth) => {
-            log(app, format!("Remote auth OK (GLZ: {})", glz_hostname(&auth.glz_url)));
+            log(
+                app,
+                format!("Remote auth OK (GLZ: {})", glz_hostname(&auth.glz_url)),
+            );
             Some(auth)
         }
         Err(e) => {
@@ -21,20 +27,32 @@ async fn build_remote_auth(lock: &lockfile::LockfileData, app: &AppHandle) -> Op
 }
 
 fn glz_hostname(url: &str) -> &str {
-    url.trim_start_matches("https://").split('.').next().unwrap_or("?")
+    url.trim_start_matches("https://")
+        .split('.')
+        .next()
+        .unwrap_or("?")
 }
 
 // ─── Connection ───────────────────────────────────────────────────────────────
 
 #[tauri::command]
-pub async fn connect(state: State<'_, AppState>, app: AppHandle) -> Result<serde_json::Value, String> {
+pub async fn connect(
+    state: State<'_, AppState>,
+    app: AppHandle,
+) -> Result<serde_json::Value, String> {
     let lock = lockfile::read_lockfile().map_err(|e| e.to_string())?;
 
-    let player = api::get_player_info(&lock).await.map_err(|e| e.to_string())?;
-    let (phase, raw_phase) = api::get_current_phase(&lock).await
+    let player = api::get_player_info(&lock)
+        .await
+        .map_err(|e| e.to_string())?;
+    let (phase, _raw_phase) = api::get_current_phase(&lock)
+        .await
         .unwrap_or_else(|_| ("menus".to_string(), "error".to_string()));
 
-    log(&app, format!("Connected: {} | phase: {}", player.game_name, phase));
+    log(
+        &app,
+        format!("Connected: {} | phase: {}", player.game_name, phase),
+    );
 
     let remote_auth = build_remote_auth(&lock, &app).await;
 
@@ -81,10 +99,13 @@ pub async fn poll_phase(state: State<'_, AppState>, app: AppHandle) -> Result<St
                         s.username = p.game_name.clone();
                         s.tag_line = p.tag_line.clone();
                         s.puuid = p.puuid;
-                        let _ = app.emit("connected", serde_json::json!({
-                            "username": p.game_name,
-                            "tagLine": p.tag_line,
-                        }));
+                        let _ = app.emit(
+                            "connected",
+                            serde_json::json!({
+                                "username": p.game_name,
+                                "tagLine": p.tag_line,
+                            }),
+                        );
                     }
                     new_lock
                 }
@@ -93,10 +114,13 @@ pub async fn poll_phase(state: State<'_, AppState>, app: AppHandle) -> Result<St
         }
     };
 
-    let (phase, raw_phase) = match api::get_current_phase(&lock).await {
+    let (phase, _raw_phase) = match api::get_current_phase(&lock).await {
         Ok(p) => p,
         Err(e) => {
-            log(&app, format!("Phase poll network error (Valorant closed?): {e}"));
+            log(
+                &app,
+                format!("Phase poll network error (Valorant closed?): {e}"),
+            );
             let mut s = state.lock().await;
             s.lockfile = None;
             s.remote_auth = None;
@@ -145,7 +169,12 @@ pub async fn poll_phase(state: State<'_, AppState>, app: AppHandle) -> Result<St
     if phase != "ingame" {
         let (is_running, is_locked, config, remote_auth) = {
             let s = state.lock().await;
-            (s.is_running, s.is_locked, s.config.clone(), s.remote_auth.clone())
+            (
+                s.is_running,
+                s.is_locked,
+                s.config.clone(),
+                s.remote_auth.clone(),
+            )
         };
 
         if is_running && !is_locked {
@@ -162,7 +191,10 @@ pub async fn poll_phase(state: State<'_, AppState>, app: AppHandle) -> Result<St
             };
 
             if auth.glz_url.is_empty() {
-                log(&app, "GLZ URL empty — waiting for Valorant to connect to game server");
+                log(
+                    &app,
+                    "GLZ URL empty — waiting for Valorant to connect to game server",
+                );
                 return Ok(phase);
             }
 
@@ -172,7 +204,9 @@ pub async fn poll_phase(state: State<'_, AppState>, app: AppHandle) -> Result<St
                 }
                 Ok(match_id) if match_id.is_empty() => {}
                 Ok(match_id) => {
-                    let map = api::get_pregame_map(&auth, &match_id).await.unwrap_or_default();
+                    let map = api::get_pregame_map(&auth, &match_id)
+                        .await
+                        .unwrap_or_default();
                     {
                         let mut s = state.lock().await;
                         s.pregame_match_id = match_id.clone();
@@ -197,14 +231,20 @@ pub async fn poll_phase(state: State<'_, AppState>, app: AppHandle) -> Result<St
                         return Ok(phase);
                     }
 
-                    log(&app, format!(
-                        "Agent select — map={} agent={:.8}... mode={} delay={}ms",
-                        if map.is_empty() { "unknown" } else { &map },
-                        &agent_id, lock_mode, config.delay_ms
-                    ));
+                    log(
+                        &app,
+                        format!(
+                            "Agent select — map={} agent={:.8}... mode={} delay={}ms",
+                            if map.is_empty() { "unknown" } else { &map },
+                            &agent_id,
+                            lock_mode,
+                            config.delay_ms
+                        ),
+                    );
 
                     if config.delay_ms > 0 {
-                        tokio::time::sleep(tokio::time::Duration::from_millis(config.delay_ms)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(config.delay_ms))
+                            .await;
                     }
 
                     let cancelled = { state.lock().await.cancel_requested };
@@ -220,7 +260,9 @@ pub async fn poll_phase(state: State<'_, AppState>, app: AppHandle) -> Result<St
 
                     let final_result = if lock_mode == "lock" {
                         let r = api::lock_agent(&auth, &match_id, &agent_id).await;
-                        if let Err(e) = &r { log(&app, format!("Lock ERR: {e}")); }
+                        if let Err(e) = &r {
+                            log(&app, format!("Lock ERR: {e}"));
+                        }
                         r
                     } else {
                         select_result
@@ -256,12 +298,19 @@ pub async fn start_instalocker(state: State<'_, AppState>, app: AppHandle) -> Re
     s.is_running = true;
     s.is_locked = false;
     s.cancel_requested = false;
-    log(&app, format!(
-        "Armed — agent={} mode={} delay={}ms",
-        if s.config.selected_agent_id.is_empty() { "macro" } else { &s.config.selected_agent_name },
-        s.config.lock_mode,
-        s.config.delay_ms
-    ));
+    log(
+        &app,
+        format!(
+            "Armed — agent={} mode={} delay={}ms",
+            if s.config.selected_agent_id.is_empty() {
+                "macro"
+            } else {
+                &s.config.selected_agent_name
+            },
+            s.config.lock_mode,
+            s.config.delay_ms
+        ),
+    );
     Ok(())
 }
 
@@ -278,7 +327,10 @@ pub async fn cancel_instalocker(state: State<'_, AppState>) -> Result<(), String
 pub async fn quit_pregame(state: State<'_, AppState>) -> Result<(), String> {
     let (auth, match_id) = {
         let s = state.lock().await;
-        let auth = s.remote_auth.clone().ok_or("Not connected (no remote auth)")?;
+        let auth = s
+            .remote_auth
+            .clone()
+            .ok_or("Not connected (no remote auth)")?;
         let mid = s.pregame_match_id.clone();
         (auth, mid)
     };
@@ -287,14 +339,21 @@ pub async fn quit_pregame(state: State<'_, AppState>) -> Result<(), String> {
         return Err("No active pregame match".to_string());
     }
 
-    api::quit_pregame(&auth, &match_id).await.map_err(|e| e.to_string())
+    api::quit_pregame(&auth, &match_id)
+        .await
+        .map_err(|e| e.to_string())
 }
 
-// ─── Agents ──────────────────────────────────────────────────────────────────
+// ─── Agents & Maps ───────────────────────────────────────────────────────────
 
 #[tauri::command]
 pub async fn get_agents() -> Result<Vec<agents::Agent>, String> {
     agents::fetch_agents().await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn get_maps() -> Result<Vec<valorant::maps::Map>, String> {
+    valorant::maps::fetch_maps().await.map_err(|e| e.to_string())
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -323,6 +382,14 @@ pub async fn set_map_macro(
     let config = s.config.clone();
     drop(s);
     save_config(&config).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn hide_to_tray(app: AppHandle) -> Result<(), String> {
+    if let Some(window) = app.get_webview_window("main") {
+        window.hide().map_err(|e: tauri::Error| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[tauri::command]

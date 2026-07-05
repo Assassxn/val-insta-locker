@@ -8,6 +8,13 @@ export interface Agent {
   bust_portrait: string;
 }
 
+export interface ValMap {
+  display_name: string;
+  map_url: string;
+  list_view_icon: string;
+  splash: string;
+}
+
 export interface MapMacro {
   agentId: string;
   agentName: string;
@@ -22,10 +29,26 @@ export interface AppConfig {
   theme: "dark" | "light";
   macroEnabled: boolean;
   mapMacros: Record<string, MapMacro>;
+  favoriteAgentIds: string[];
+  lowAnimations: boolean;
+  hasSeenWelcome: boolean;
+  hideToTrayOnClose: boolean;
 }
 
 export type GamePhase = "menus" | "pregame" | "ingame" | "unknown";
 export type View = "dashboard" | "settings" | "macros" | "logs";
+
+/** Returns the internal map key (last path component of mapUrl) used as macro key */
+export function mapInternalKey(mapUrl: string): string {
+  const parts = mapUrl.split("/").filter(Boolean);
+  return parts[parts.length - 1] ?? "";
+}
+
+/** Translate the internal map key emitted by the backend to a display name */
+export function mapDisplayName(internalKey: string, maps: ValMap[]): string {
+  const found = maps.find(m => mapInternalKey(m.map_url) === internalKey);
+  return found ? found.display_name : internalKey;
+}
 
 interface AppStore {
   // Connection
@@ -33,7 +56,7 @@ interface AppStore {
   username: string;
   tagLine: string;
   phase: GamePhase;
-  currentMap: string;
+  currentMap: string; // internal key, e.g. "Duality" for Bind
 
   // Instalocker state
   isRunning: boolean;
@@ -43,6 +66,10 @@ interface AppStore {
   agents: Agent[];
   agentsLoaded: boolean;
   roleFilter: string;
+
+  // Maps
+  maps: ValMap[];
+  mapsLoaded: boolean;
 
   // Config
   config: AppConfig;
@@ -61,6 +88,8 @@ interface AppStore {
   setAgents: (agents: Agent[]) => void;
   setAgentsLoaded: (v: boolean) => void;
   setRoleFilter: (r: string) => void;
+  setMaps: (maps: ValMap[]) => void;
+  setMapsLoaded: (v: boolean) => void;
   setConfig: (c: AppConfig) => void;
   patchConfig: (partial: Partial<AppConfig>) => void;
   setActiveView: (v: View) => void;
@@ -75,6 +104,10 @@ const defaultConfig: AppConfig = {
   theme: "dark",
   macroEnabled: false,
   mapMacros: {},
+  favoriteAgentIds: [],
+  lowAnimations: false,
+  hasSeenWelcome: false,
+  hideToTrayOnClose: true,
 };
 
 export const useStore = create<AppStore>((set) => ({
@@ -88,6 +121,8 @@ export const useStore = create<AppStore>((set) => ({
   agents: [],
   agentsLoaded: false,
   roleFilter: "All",
+  maps: [],
+  mapsLoaded: false,
   config: defaultConfig,
   activeView: "dashboard",
   logs: [],
@@ -104,7 +139,9 @@ export const useStore = create<AppStore>((set) => ({
   setAgents: (agents) => set({ agents }),
   setAgentsLoaded: (v) => set({ agentsLoaded: v }),
   setRoleFilter: (r) => set({ roleFilter: r }),
-  setConfig: (c) => set({ config: c }),
+  setMaps: (maps) => set({ maps }),
+  setMapsLoaded: (v) => set({ mapsLoaded: v }),
+  setConfig: (c) => set({ config: { ...defaultConfig, ...c } }),
   patchConfig: (partial) => set((s) => ({ config: { ...s.config, ...partial } })),
   setActiveView: (v) => set({ activeView: v }),
   addLog: (msg) =>

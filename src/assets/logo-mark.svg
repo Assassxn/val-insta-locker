@@ -1,0 +1,13 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="vgrad" x1="256" y1="100" x2="256" y2="420" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff5f6d"/>
+      <stop offset="0.55" stop-color="#ff4655"/>
+      <stop offset="1" stop-color="#c92a38"/>
+    </linearGradient>
+  </defs>
+  <!-- V chevron -->
+  <path d="M96 108 H188 L256 288 L324 108 H416 L292 412 H220 Z" fill="url(#vgrad)"/>
+  <!-- Crosshair diamond above the V -->
+  <rect x="232" y="60" width="48" height="48" transform="rotate(45 256 84)" fill="#ece9e4"/>
+</svg>

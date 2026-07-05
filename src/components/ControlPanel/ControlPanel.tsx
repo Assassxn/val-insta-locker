@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Shield, X, Crosshair, Map } from "lucide-react";
+import { Shield, X, Crosshair, Map, PanelBottomClose } from "lucide-react";
 import { useStore } from "../../store";
 
 function Toggle({ on, onToggle, label }: { on: boolean; onToggle: () => void; label?: string }) {
@@ -67,53 +67,49 @@ export function ControlPanel() {
       {/* ── Agent Preview ────────────────────────────────── */}
       <div style={{
         position: "relative",
-        height: 160,
-        background: "var(--bg)",
+        height: 190,
+        background: "radial-gradient(ellipse 90% 70% at 50% 20%, rgba(255,70,85,0.10), transparent 70%), var(--bg)",
         overflow: "hidden",
         flexShrink: 0,
+        borderBottom: "1px solid var(--border)",
       }}>
         {selectedAgent ? (
           <>
-            {/* Bust portrait as blurred background */}
-            {selectedAgent.bust_portrait && (
-              <img
-                src={selectedAgent.bust_portrait}
-                alt=""
-                style={{
-                  position:"absolute", inset:0, width:"100%", height:"100%",
-                  objectFit:"cover", objectPosition:"top",
-                  filter:"blur(2px) brightness(0.35)",
-                  transform:"scale(1.05)",
-                }}
-              />
-            )}
-            {/* Icon centered */}
+            {/* Full bust portrait */}
+            <img
+              key={selectedAgent.uuid}
+              src={selectedAgent.bust_portrait || selectedAgent.display_icon_small}
+              alt={selectedAgent.display_name}
+              className="anim-fade-in"
+              style={{
+                position:"absolute", inset:0, width:"100%", height:"100%",
+                objectFit:"cover", objectPosition:"center 12%",
+                transform:"scale(1.55)", transformOrigin:"50% 22%",
+                filter:"drop-shadow(0 0 24px rgba(255,70,85,0.25))",
+              }}
+            />
+            {/* Fade into panel */}
             <div style={{
-              position:"relative", height:"100%",
-              display:"flex", flexDirection:"column",
-              alignItems:"center", justifyContent:"center",
-              gap:8,
-            }}>
-              <div style={{
-                width:72, height:72,
-                clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))",
-                overflow:"hidden", flexShrink:0,
-                boxShadow:"0 0 20px rgba(255,70,85,0.3)",
+              position:"absolute", inset:0,
+              background:"linear-gradient(180deg, transparent 35%, rgba(10,10,12,0.55) 72%, var(--surface) 100%)",
+              pointerEvents:"none",
+            }} />
+            {/* Name plate */}
+            <div style={{ position:"absolute", left:14, right:14, bottom:8 }}>
+              <p className="display" style={{
+                fontSize:22, fontWeight:700, letterSpacing:"0.1em",
+                color:"var(--text)", lineHeight:1,
+                textShadow:"0 2px 10px rgba(0,0,0,0.8)",
               }}>
-                <img
-                  src={selectedAgent.display_icon_small}
-                  alt={selectedAgent.display_name}
-                  style={{ width:"100%", height:"100%", objectFit:"cover" }}
-                />
-              </div>
-              <div style={{ textAlign:"center" }}>
-                <p style={{ fontSize:15, fontWeight:800, letterSpacing:"0.08em", textTransform:"uppercase", color:"var(--text)", lineHeight:1.2 }}>
-                  {selectedAgent.display_name}
-                </p>
-                <p style={{ fontSize:9, fontWeight:700, letterSpacing:"0.14em", textTransform:"uppercase", color:"var(--text3)", marginTop:2 }}>
-                  {selectedAgent.role}
-                </p>
-              </div>
+                {selectedAgent.display_name}
+              </p>
+              <p className="display" style={{
+                fontSize:11, fontWeight:600, letterSpacing:"0.22em",
+                color:"var(--red)", marginTop:2,
+                textShadow:"0 1px 6px rgba(0,0,0,0.8)",
+              }}>
+                {selectedAgent.role}
+              </p>
             </div>
           </>
         ) : (
@@ -231,17 +227,25 @@ export function ControlPanel() {
 
         {isRunning && (
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            <div style={{
-              padding:"10px 14px",
-              background:"var(--red-dim)",
+            <div className="hud-corners accent" style={{
+              padding:"12px 14px",
+              background:"linear-gradient(180deg, rgba(255,70,85,0.16), rgba(255,70,85,0.06))",
               border:"1px solid var(--red-border)",
-              clipPath:"polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px))",
               textAlign:"center",
+              animation:"arm-pulse 2s ease-in-out infinite",
             }}>
-              <p style={{ fontSize:10, fontWeight:700, color:"var(--red)", letterSpacing:"0.12em", textTransform:"uppercase" }}>
+              <p className="display" style={{
+                fontSize:15, fontWeight:700, color:"var(--red)", letterSpacing:"0.22em",
+                display:"flex", alignItems:"center", justifyContent:"center", gap:7,
+              }}>
+                <span style={{
+                  width:6, height:6, borderRadius:"50%", background:"var(--red)",
+                  boxShadow:"0 0 8px var(--red)",
+                  animation:"dot-pulse 1.2s ease-in-out infinite",
+                }} />
                 Armed
               </p>
-              <p style={{ fontSize:10, fontWeight:600, color:"var(--red)", letterSpacing:"0.06em", opacity:0.7, marginTop:2 }}>
+              <p style={{ fontSize:10, fontWeight:600, color:"var(--red)", letterSpacing:"0.06em", opacity:0.7, marginTop:3 }}>
                 Waiting for agent select...
               </p>
             </div>
@@ -256,7 +260,7 @@ export function ControlPanel() {
       {/* ── Bottom info ───────────────────────────────────── */}
       {!connected && (
         <div style={{
-          padding:"8px 14px",
+          padding:"6px 14px",
           borderTop:"1px solid var(--border)",
           background:"var(--red-dim)",
           flexShrink:0,
@@ -266,6 +270,32 @@ export function ControlPanel() {
           </p>
         </div>
       )}
+
+      {/* ── Hide to tray ──────────────────────────────────── */}
+      <div style={{
+        padding:"6px 14px",
+        borderTop:"1px solid var(--border)",
+        flexShrink:0,
+        display:"flex", justifyContent:"flex-end",
+      }}>
+        <button
+          onClick={() => invoke("hide_to_tray")}
+          title="Hide to system tray (app keeps running)"
+          style={{
+            display:"flex", alignItems:"center", gap:5,
+            background:"transparent", border:"none", cursor:"pointer",
+            color:"var(--text3)", fontSize:10, fontWeight:600,
+            letterSpacing:"0.08em", textTransform:"uppercase",
+            padding:"3px 4px",
+            transition:"color 150ms",
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = "var(--text)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "var(--text3)")}
+        >
+          <PanelBottomClose size={11} />
+          Hide to tray
+        </button>
+      </div>
     </div>
   );
 }

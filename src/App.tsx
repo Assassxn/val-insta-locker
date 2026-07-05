@@ -2,24 +2,36 @@ import { useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useStore, GamePhase } from "./store";
-import { Sidebar }      from "./components/Sidebar/Sidebar";
-import { StatusBar }    from "./components/StatusBar/StatusBar";
-import { AgentGrid }    from "./components/AgentGrid/AgentGrid";
-import { ControlPanel } from "./components/ControlPanel/ControlPanel";
-import { Settings }     from "./components/Settings/Settings";
-import { MacroPanel }   from "./components/MacroPanel/MacroPanel";
-import { Logs }         from "./components/Logs/Logs";
+import { Sidebar }          from "./components/Sidebar/Sidebar";
+import { StatusBar }        from "./components/StatusBar/StatusBar";
+import { AgentGrid }        from "./components/AgentGrid/AgentGrid";
+import { ControlPanel }     from "./components/ControlPanel/ControlPanel";
+import { Settings }         from "./components/Settings/Settings";
+import { MacroPanel }       from "./components/MacroPanel/MacroPanel";
+import { Logs }             from "./components/Logs/Logs";
+import { Welcome }          from "./components/Welcome/Welcome";
+import { PregameOverlay }   from "./components/PregameOverlay/PregameOverlay";
 
 export default function App() {
   const {
-    activeView,
+    activeView, config,
     setConnected, setUsername, setPhase, setCurrentMap,
     setLocked,
     setAgents, setAgentsLoaded,
+    setMaps, setMapsLoaded,
     setConfig, addLog,
   } = useStore();
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Apply/remove low-motion class on <html> whenever setting changes
+  useEffect(() => {
+    if (config.lowAnimations) {
+      document.documentElement.classList.add("low-motion");
+    } else {
+      document.documentElement.classList.remove("low-motion");
+    }
+  }, [config.lowAnimations]);
 
   useEffect(() => {
     (async () => {
@@ -36,6 +48,16 @@ export default function App() {
       } catch (e) {
         addLog(`Failed to load agents: ${e}`);
         setAgentsLoaded(true);
+      }
+
+      try {
+        const maps = await invoke<any[]>("get_maps");
+        setMaps(maps);
+        setMapsLoaded(true);
+        addLog(`Loaded ${maps.length} maps`);
+      } catch (e) {
+        addLog(`Failed to load maps: ${e}`);
+        setMapsLoaded(true);
       }
 
       try {
@@ -58,7 +80,10 @@ export default function App() {
     }).then(u => unsubs.push(u));
 
     listen<string>("map-detected", e => {
-      if (e.payload) { setCurrentMap(e.payload); addLog(`Map: ${e.payload}`); }
+      if (e.payload) {
+        setCurrentMap(e.payload);
+        addLog(`Map: ${e.payload}`);
+      }
     }).then(u => unsubs.push(u));
 
     listen<boolean>("lock-status", e => {
@@ -80,7 +105,7 @@ export default function App() {
     listen<{ username: string; tagLine: string }>("connected", e => {
       setConnected(true);
       setUsername(e.payload.username, e.payload.tagLine);
-      addLog(`Auto-connected as ${e.payload.username}#${e.payload.tagLine}`);
+      addLog(`Auto-connected: ${e.payload.username}#${e.payload.tagLine}`);
     }).then(u => unsubs.push(u));
 
     listen("disconnected", () => {
@@ -105,11 +130,14 @@ export default function App() {
         <Sidebar />
 
         {/* Main content */}
-        <div style={{ flex:1, display:"flex", overflow:"hidden" }}>
+        <div style={{ flex:1, display:"flex", overflow:"hidden", position:"relative" }}>
           {activeView === "dashboard" && (
             <>
               <AgentGrid />
-              <ControlPanel />
+              <div style={{ position:"relative", width:220, flexShrink:0 }}>
+                <ControlPanel />
+                <PregameOverlay />
+              </div>
             </>
           )}
           {activeView === "settings" && <Settings />}
@@ -117,6 +145,9 @@ export default function App() {
           {activeView === "logs"     && <Logs />}
         </div>
       </div>
+
+      {/* Global overlays */}
+      <Welcome />
     </div>
   );
 }

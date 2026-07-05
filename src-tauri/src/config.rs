@@ -21,7 +21,17 @@ pub struct AppConfig {
     pub theme: String,       // "dark" | "light"
     pub macro_enabled: bool,
     pub map_macros: HashMap<String, MapMacro>,
+    #[serde(default)]
+    pub favorite_agent_ids: Vec<String>,
+    #[serde(default)]
+    pub low_animations: bool,
+    #[serde(default)]
+    pub has_seen_welcome: bool,
+    #[serde(default = "default_true")]
+    pub hide_to_tray_on_close: bool,
 }
+
+fn default_true() -> bool { true }
 
 impl Default for AppConfig {
     fn default() -> Self {
@@ -33,6 +43,10 @@ impl Default for AppConfig {
             theme: "dark".to_string(),
             macro_enabled: false,
             map_macros: HashMap::new(),
+            favorite_agent_ids: Vec::new(),
+            low_animations: false,
+            has_seen_welcome: false,
+            hide_to_tray_on_close: true,
         }
     }
 }
