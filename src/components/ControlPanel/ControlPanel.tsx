@@ -169,13 +169,13 @@ export function ControlPanel() {
             <span style={{ fontSize:11, fontWeight:700, color:"var(--red)" }}>{config.delayMs}ms</span>
           </div>
           <input
-            type="range" min={0} max={2000} step={50}
+            type="range" min={0} max={10000} step={50}
             value={config.delayMs}
             onChange={e => saveConfig({ delayMs: Number(e.target.value) })}
           />
           <div style={{ display:"flex", justifyContent:"space-between", marginTop:4 }}>
             <span style={{ fontSize:9, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>Instant</span>
-            <span style={{ fontSize:9, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>2s</span>
+            <span style={{ fontSize:9, color:"var(--text3)", textTransform:"uppercase", letterSpacing:"0.08em" }}>10s</span>
           </div>
         </div>
 

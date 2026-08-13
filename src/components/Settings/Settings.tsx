@@ -167,7 +167,7 @@ export function Settings() {
             <input
               type="range"
               min={0}
-              max={2000}
+              max={10000}
               step={50}
               value={config.delayMs}
               style={{ flex: 1 }}
